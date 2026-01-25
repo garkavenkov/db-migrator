@@ -1,0 +1,21 @@
+{
+    "name": "garkavenkov/db-migrator",
+    "description": "Database migrator",
+    "type": "library",
+    "require": {
+        "garkavenkov/db-connector": "dev-master"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "DB\\Migrator\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Maksim Garkavenkov",
+            "email": "maksim.garkavenkov@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}

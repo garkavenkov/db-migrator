@@ -1,0 +1,59 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "38283414fdb56c2dad1ff569f8e89507",
+    "packages": [
+        {
+            "name": "garkavenkov/db-connector",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/garkavenkov/db-connector.git",
+                "reference": "4879b7bf22413ca122777496b0fd9bf288df3b5c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/garkavenkov/db-connector/zipball/4879b7bf22413ca122777496b0fd9bf288df3b5c",
+                "reference": "4879b7bf22413ca122777496b0fd9bf288df3b5c",
+                "shasum": ""
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "DBConnector\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Maksim Garkavenkov",
+                    "email": "maksim.garkavenkov@gmail.com"
+                }
+            ],
+            "description": "Wrapper for PDO",
+            "support": {
+                "issues": "https://github.com/garkavenkov/db-connector/issues",
+                "source": "https://github.com/garkavenkov/db-connector/tree/v1.2.0"
+            },
+            "time": "2023-09-23T10:11:55+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "garkavenkov/db-connector": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.6.0"
+}
