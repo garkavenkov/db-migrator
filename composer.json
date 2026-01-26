@@ -8,7 +8,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "DB\\Migrator\\": "src/"
+            "DB\\Migration\\": "src/"
         }
     },
     "authors": [
