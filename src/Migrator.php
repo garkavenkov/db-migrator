@@ -3,6 +3,7 @@
 namespace DB\Migration;
 
 use DBConnector\DBConnect;
+use Error;
 
 class Migrator
 {
@@ -20,28 +21,112 @@ class Migrator
         $this->dbh = $dbh; 
     }
 
+    /**
+     * Return Database driver
+     *
+     * @return string   Database driver (e.g. mysql, sqlite, etc.)
+     */
+    public function getDatabaseEngine(): string
+    {
+        return $this->db_driver;
+    }
+
+    /**
+     * Register migration (insert record into migrations table)
+     *
+     * @param string $migration Migration's class name
+     * @return int              Registered migration's ID
+     */
+    private function registerMigration(string $migration): int
+    {
+        $sql = "INSERT INTO 'migrations' (`name` ) VALUES (:name)";
+        return $this->dbh->prepare($sql)->execute([':name' => $migration])->getLastInsertedId();
+        
+    }
+
+    /**
+     * Unregister migration (i.e. delete record from migrations table)
+     *
+     * @param string $migration Migration's class name
+     * @return integer          1 if operation was successfull, 0 - otherwise
+     */
+    private function unregisterMigration(string $migration): int
+    {
+        $sql = "DELETE FROM 'migrations' WHERE name = :name";
+        return $this->dbh->prepare($sql)->execute([':name' => $migration])->rowCount();        
+    }
+
+    /**
+     * Load migration class and return Migration::class instance
+     *
+     * @param string $className Migration name
+     * @return Migration
+     */
+    private function loadMigration(string $className): Migration
+    {
+        return require(constant("MIGRATIONS_DIR") . "/" . $className. '.php');
+    }
+
+    /**
+     * Create migrations table
+     *
+     * @return void
+     */
+    public function init()
+    {        
+        $sql = '';
+        echo $this->db_driver . PHP_EOL;
+        if ($this->db_driver === 'sqlite') {
+            $databaseName = ROOT_DIR . '/test/database.sqlite';
+            echo $databaseName . PHP_EOL;
+            if (!file_exists($databaseName)) {
+                try {                    
+                    if (touch($databaseName)) {
+                        echo "$databaseName was successfuly created\n";
+                    } else {
+                        throw new Error("Cannot create $databaseName");
+                    }
+                    
+                } catch (\Throwable $th) {
+                    die($th->getMessage());
+                }
+            }
+            
+            $sql  = "CREATE TABLE 'migrations' (";
+            $sql .= "   'id'	INTEGER NOT NULL,";
+            $sql .= "   'name'	TEXT NOT NULL UNIQUE,";
+            $sql .= "   'created_at' TIME DEFAULT CURRENT_TIMESTAMP ,";
+            $sql .= "   PRIMARY KEY('id' AUTOINCREMENT)";
+            $sql .= ")";
+        }
+        echo "SQL - $sql";
+        if ($sql != '') {
+            $res = $this->dbh->exec($sql);
+            echo $res . PHP_EOL;
+        }
+    }
+
+    /**
+     * Display migrations status (i.e.  completed migrations and pending migrations)
+     *
+     * @return void
+     */
     public function status()
     {
         echo "List migration status\n";
       
         $completedMigrations = $this->getCompletedMigrations();
-       
         
-        // $availableMigrations = $this->getAvaiableMigrations();
         $pendingMigrations = $this->getPendingMigration();
-        var_dump($completedMigrations);
-        var_dump($pendingMigrations);
-        exit;
-        return array_unique(array_merge($availableMigrations, $completedMigrations));
+        
+        
+        // return array_unique(array_merge($availableMigrations, $completedMigrations));
     }
 
-    public function init()
-    {
-
-    }
+   
 
     /**
-     * Undocumented function
+     * Get completed migrations
      *
      * @return array
      */
@@ -52,11 +137,11 @@ class Migrator
     }
 
     /**
-     * Undocumented function
+     * Get available migrations (i.e. migration class in MIGRATIONS_DIR)
      *
      * @return array
      */
-    private function getAvaiableMigrations(): array
+    private function getAvailableMigrations(): array
     {
         $res = [];
         $migrationClasses = array_values(array_diff(scandir(constant("MIGRATIONS_DIR")),array('.', '..')));
@@ -68,37 +153,29 @@ class Migrator
 
 
     /**
-     * Undocumented function
+     * Get pending migrations
      *
      * @return void
      */
     private function getPendingMigration() : array
-    {  
-        // echo "function getPendingMigration()....\n";
-        $completedMigrations = array_map(fn($m) => $m['name']
-            // echo "Completed migration - ". $m['name'] . PHP_EOL;
-            // return $m['name'];
-        , $this->getCompletedMigrations());
-        var_dump(array_diff($this->getAvaiableMigrations(), $completedMigrations));
-        exit;
+    {          
+        $completedMigrations = array_map(fn($m) => $m['name'], $this->getCompletedMigrations());               
         
         // return array_diff($this->getAvaiableMigrations(), $this->getCompletedMigrations());
-        return array_diff($this->getAvaiableMigrations(), $completedMigrations);
+        return array_diff($this->getAvailableMigrations(), $completedMigrations);
     }
 
     /**
      * Rollback database migration
      *
-     * @param integer $steps    
+     * @param integer $steps    How many steps need to rollback. 0 - rollback all migration.
      * @return void
      */
     public function rollback(int $steps=0)
-    {
-        // $completedMigrations = array_reverse($this->getCompletedMigrations());
+    {        
         $completedMigrations = $this->getCompletedMigrations();
-        print_r($completedMigrations);
+        
         if (count($completedMigrations) > 0) {
-
             if ($steps == 0) {
                 // rollback  all migrations
                 foreach($completedMigrations as $migration) {
@@ -126,46 +203,34 @@ class Migrator
 
     }
 
-    private function loadMigration(string $className) 
+    /**
+     * Migrate database. 
+     *
+     * @param string|null $className Migration name. If null migrate all pending migrations
+     * @return void
+     */
+    public function migrate(?string $className = null)
     {
-        return require(constant("MIGRATIONS_DIR") . "/" . $className. '.php');
-    }
-
-    
-    public function migrate()
-    {
-        $pendingMigrations = [];
-        $pendingMigrations = $this->getPendingMigration() ?? [];
-
-        foreach($pendingMigrations as $migration) {
-            // echo "Migrate $migration ... ";
-            $m = $this->loadMigration($migration);
-            $m->up();
-            echo " -> done\n";
-            $this->registerMigration($migration);
+        if (is_null($className)) {
+            $pendingMigrations = [];
+            $pendingMigrations = $this->getPendingMigration() ?? [];
+                
+            foreach($pendingMigrations as $migration) {
+                // echo "Migrate $migration ... ";
+                $m = $this->loadMigration($migration);
+                $m->up();
+                echo " -> done\n";
+                $this->registerMigration($migration);
+            }
+        } else {
+            try {
+                $m = $this->loadMigration($className)->up();                
+                echo " -> done\n";
+                $this->registerMigration($className);                
+            } catch (\Throwable $th) {
+                echo $th->getMessage();
+            }
         }
     }
-    /**
-     * Return Database driver
-     *
-     * @return string
-     */
-    public function getDatabaseEngine(): string
-    {
-        return $this->db_driver;
-    }
 
-    private function registerMigration(string $migration)
-    {
-        $sql = "INSERT INTO 'migrations' (`name` ) VALUES (:name)";
-        $id = $this->dbh->prepare($sql)->execute([':name' => $migration])->getLastInsertedId();
-        echo "Last inserted ID is $id\n";
-    }
-
-    private function unregisterMigration(string $migration)
-    {
-        $sql = "DELETE FROM 'migrations' WHERE name = :name";
-        $id = $this->dbh->prepare($sql)->execute([':name' => $migration])->rowCount();
-        echo "Last inserted ID is $id\n";
-    }
 }
